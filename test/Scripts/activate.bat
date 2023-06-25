@@ -8,7 +8,11 @@ if defined _OLD_CODEPAGE (
     "%SystemRoot%\System32\chcp.com" 65001 > nul
 )
 
+<<<<<<< HEAD
 set VIRTUAL_ENV=C:\Users\user\Desktop\gitcopy\Human-Fall-Detection\test
+=======
+set VIRTUAL_ENV=C:\Users\aks15\Documents\Desktop\Human-Fall-Detection\test
+>>>>>>> 4d9635b0f77e2e00e414e8616035e7e52d6cf798
 
 if not defined PROMPT set PROMPT=$P$G
 
@@ -25,7 +29,10 @@ if defined _OLD_VIRTUAL_PATH set PATH=%_OLD_VIRTUAL_PATH%
 if not defined _OLD_VIRTUAL_PATH set _OLD_VIRTUAL_PATH=%PATH%
 
 set PATH=%VIRTUAL_ENV%\Scripts;%PATH%
+<<<<<<< HEAD
 set VIRTUAL_ENV_PROMPT=(test) 
+=======
+>>>>>>> 4d9635b0f77e2e00e414e8616035e7e52d6cf798
 
 :END
 if defined _OLD_CODEPAGE (

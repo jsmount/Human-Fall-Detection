@@ -10,6 +10,7 @@ from utils.general import non_max_suppression_kpt
 from utils.plots import output_to_keypoint
 from PyQt5.QtWidgets import QApplication, QFileDialog, QMessageBox, QInputDialog
 from concurrent.futures import ThreadPoolExecutor
+import sys
 
 RED_COLOR = (0, 0, 255)
 FONT = cv2.FONT_HERSHEY_SIMPLEX
@@ -116,11 +117,7 @@ def get_pose(image, model, device):
 
 def prepare_image(image):
     _image = image[0].permute(1, 2, 0) * 255 # BGR to RGB
-    _image = image[0].permute(1, 2, 0) * 255
-		# 이미지를 CPU 상에서 NumPy 배열로 변환
-    _image = _image.cpu().numpy().astype(np.uint8)
-		# RGB 형식의 이미지를 BGR 형식으로 변환
-    _image = cv2.cvtColor(_image, cv2.COLOR_RGB2BGR)
+    _image = _image.cpu().numpy().astype(np.uint8).copy()
     return _image
 
 
@@ -155,21 +152,63 @@ def process_video(video_path):
 
     frames = []
     success, frame = vid_cap.read()
-
     while success:
         frames.append(frame)
         success, frame = vid_cap.read()
 
-    for frame in frames:
-        _image = process_frame(frame, model, device)
+    with ThreadPoolExecutor() as executor:
+        processed_frames = list(tqdm(executor.map(lambda f: process_frame(f, model, device), frames), total=len(frames)))
+
+    for _image in processed_frames:
         vid_out.write(_image)
 
     vid_out.release()
-    print("Video processing complete:", video_path)
+    print("Processing video:", video_path)
+
+def process_video2():
+    # 전체 프로세스 함수
+    vid_cap = cv2.VideoCapture(0,cv2.CAP_DSHOW) 
+
+    if not vid_cap.isOpened():
+        print('Error while trying to read video. Please check path again')
+        return
+    # 포즈 얻기
+    model, device = get_pose_model()
+    # 미리 배경 생성
+    # vid_out = prepare_vid_out(video_path, vid_cap)
+    
+    # 캡쳐하기
+    # success, frame = vid_cap.read()
+    # _frames = [] 
+    # 모든 프레임을 저장
+    while True:
+        success, frame = vid_cap.read()
+
+        if success :
+        # 자세 추출
+            image, output = get_pose(frame, model, device)
+        # 출력 이미지 생성
+            _image = prepare_image(image)
+        # 낙상 여부와 바운딩 박스 추출
+            is_fall, bbox = fall_detection(output)
+            if is_fall:
+                # 알람
+                draw_falling_alarm(_image, bbox)
+            cv2.imshow('Video',_image)
+            # vid_out.write(_image)
+            key = cv2.waitKey(1)
+            if key==ord('q'):
+                break
+            if not success: sys.exit('프레임 획득에 실패하여 나갑니다')
+    # vid_out.release()
+
+    vid_cap.release()
+    cv2.destroyAllWindows()
+
 
 def main():
     app = QApplication([])
-    options = ("Select Folder", "Select Video File")
+    options = ("Select Folder", "Select Video File", "Select Webcam")
     option, _ = QInputDialog.getItem(None, "Options", "Select an option:", options, 0, False)
 
     if option == "Select Folder":
@@ -194,7 +233,8 @@ def main():
             process_video(video_path)
         else:
             print("Invalid video file selection.")
-
+    elif option == "Select Webcam":
+        process_video2()
     app.quit()
 
 
