@@ -18,11 +18,7 @@ deactivate () {
     # be called to get it to forget past commands.  Without forgetting
     # past commands the $PATH changes we made may not be respected
     if [ -n "${BASH:-}" -o -n "${ZSH_VERSION:-}" ] ; then
-<<<<<<< HEAD
-        hash -r 2> /dev/null
-=======
         hash -r
->>>>>>> 4d9635b0f77e2e00e414e8616035e7e52d6cf798
     fi
 
     if [ -n "${_OLD_VIRTUAL_PS1:-}" ] ; then
@@ -32,10 +28,6 @@ deactivate () {
     fi
 
     unset VIRTUAL_ENV
-<<<<<<< HEAD
-    unset VIRTUAL_ENV_PROMPT
-=======
->>>>>>> 4d9635b0f77e2e00e414e8616035e7e52d6cf798
     if [ ! "${1:-}" = "nondestructive" ] ; then
     # Self destruct!
         unset -f deactivate
@@ -45,11 +37,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-<<<<<<< HEAD
-VIRTUAL_ENV="C:\Users\user\Desktop\gitcopy\Human-Fall-Detection\test"
-=======
 VIRTUAL_ENV="C:\Users\aks15\Documents\Desktop\Human-Fall-Detection\test"
->>>>>>> 4d9635b0f77e2e00e414e8616035e7e52d6cf798
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"
@@ -66,12 +54,6 @@ fi
 
 if [ -z "${VIRTUAL_ENV_DISABLE_PROMPT:-}" ] ; then
     _OLD_VIRTUAL_PS1="${PS1:-}"
-<<<<<<< HEAD
-    PS1="(test) ${PS1:-}"
-    export PS1
-    VIRTUAL_ENV_PROMPT="(test) "
-    export VIRTUAL_ENV_PROMPT
-=======
     if [ "x(test) " != x ] ; then
 	PS1="(test) ${PS1:-}"
     else
@@ -84,16 +66,11 @@ if [ -z "${VIRTUAL_ENV_DISABLE_PROMPT:-}" ] ; then
     fi
     fi
     export PS1
->>>>>>> 4d9635b0f77e2e00e414e8616035e7e52d6cf798
 fi
 
 # This should detect bash and zsh, which have a hash command that must
 # be called to get it to forget past commands.  Without forgetting
 # past commands the $PATH changes we made may not be respected
 if [ -n "${BASH:-}" -o -n "${ZSH_VERSION:-}" ] ; then
-<<<<<<< HEAD
-    hash -r 2> /dev/null
-=======
     hash -r
->>>>>>> 4d9635b0f77e2e00e414e8616035e7e52d6cf798
 fi
