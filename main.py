@@ -198,8 +198,7 @@ def process_video2():
                 draw_falling_alarm(_image, bbox)
             cv2.imshow('Video',_image)
             # vid_out.write(_image)
-            key = cv2.waitKey(1)
-            if key==ord('q'):
+            if cv2.waitKey(1)==ord('q') or cv2.getWindowProperty('Video', cv2.WND_PROP_VISIBLE) <1:
                 break
             if not success: sys.exit('프레임 획득에 실패하여 나갑니다')
     # vid_out.release()

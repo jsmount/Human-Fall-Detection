@@ -40,7 +40,7 @@ class SecondPage(QWidget):
     def initUI(self):
         self.setWindowTitle("Human_Fall_Detection")
         self.setWindowIcon(QIcon("icons/fall_icon.png"))
-        self.resize(890,500)
+        self.resize(1000,600)
         self.center()
     
         vbox = QVBoxLayout()
@@ -51,13 +51,13 @@ class SecondPage(QWidget):
         label.setText("옵션 선택")
         label.setFont(QFont('Arial', 16, QFont.Bold))
         label.setContentsMargins(20, 10, 0, 0)
-        label.setFixedHeight(30)
+        label.setFixedHeight(40)
         hbox.addWidget(label)
 
         close_label = QLabel(self)
         close_label.setPixmap(QPixmap("icons/close.png").scaled(20, 20, Qt.AspectRatioMode.KeepAspectRatio))
         close_label.setAlignment(Qt.AlignRight)
-        close_label.setFixedHeight(30)
+        close_label.setFixedHeight(40)
         hbox.addWidget(close_label)
 
         vbox.addLayout(hbox)
@@ -67,8 +67,8 @@ class SecondPage(QWidget):
 
         # select file
 
-        self.select_file_button.setFixedWidth(260)
-        self.select_file_button.setFixedHeight(300)
+        self.select_file_button.setFixedWidth(300)
+        self.select_file_button.setFixedHeight(350)
         self.select_file_button.clicked.connect(self.clicked_select_file)
 
         select_filelayout = QVBoxLayout(self.select_file_button)
@@ -98,8 +98,8 @@ class SecondPage(QWidget):
 
         # select folder
 
-        self.select_folder_button.setFixedWidth(260)
-        self.select_folder_button.setFixedHeight(300)
+        self.select_folder_button.setFixedWidth(300)
+        self.select_folder_button.setFixedHeight(350)
         self.select_folder_button.clicked.connect(self.clicked_select_folder)
 
         select_folder_layout = QVBoxLayout(self.select_folder_button)
@@ -129,8 +129,8 @@ class SecondPage(QWidget):
 
         # select webcam
 
-        self.select_webcam_button.setFixedWidth(260)
-        self.select_webcam_button.setFixedHeight(300)
+        self.select_webcam_button.setFixedWidth(300)
+        self.select_webcam_button.setFixedHeight(350)
         self.select_webcam_button.clicked.connect(self.clicked_select_webcam)
 
         select_webcam_layout = QVBoxLayout(self.select_webcam_button)
@@ -343,7 +343,7 @@ class MyApp(QWidget):
     def initUI(self):
         self.setWindowTitle("Human_Fall_Detection")
         self.setWindowIcon(QIcon("icons/fall_icon.png"))
-        self.resize(890,500)
+        self.resize(1000,600)
         self.center()
 
         vbox = QVBoxLayout()
