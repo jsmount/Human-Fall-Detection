@@ -12,6 +12,8 @@ from PyQt5.QtWidgets import QApplication, QFileDialog, QMessageBox, QInputDialog
 from concurrent.futures import ThreadPoolExecutor
 import sys
 
+
+
 RED_COLOR = (0, 0, 255)
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 LINE = cv2.LINE_AA
@@ -79,7 +81,7 @@ def fall_detection(poses):
 def draw_falling_alarm(image, bbox):
     x_min, y_min, x_max, y_max = bbox
     cv2.rectangle(image, (int(x_min), int(y_min)), (int(x_max), int(y_max)), color=RED_COLOR,
-                  thickness=5, lineType=LINE)
+                thickness=5, lineType=LINE)
     
     text = 'Person Fell down'
     _, text_height = cv2.getTextSize(text, FONT, 1, 3)[0]
@@ -108,7 +110,7 @@ def get_pose(image, model, device):
         output, _ = model(image)
 
     output = non_max_suppression_kpt(output, 0.25, 0.65, nc=model.yaml['nc'], nkpt=model.yaml['nkpt'],
-                                     kpt_label=True)
+                                    kpt_label=True)
     
     with torch.no_grad():
         output = output_to_keypoint(output)
@@ -207,6 +209,7 @@ def process_video2():
 
 
 def main():
+    '''
     app = QApplication([])
     options = ("Select Folder", "Select Video File", "Select Webcam")
     option, _ = QInputDialog.getItem(None, "Options", "Select an option:", options, 0, False)
@@ -236,7 +239,7 @@ def main():
     elif option == "Select Webcam":
         process_video2()
     app.quit()
-
+    '''
 
 if __name__ == '__main__':
     main()
