@@ -12,8 +12,6 @@ from PyQt5.QtWidgets import QApplication, QFileDialog, QMessageBox, QInputDialog
 from concurrent.futures import ThreadPoolExecutor
 import sys
 
-
-
 RED_COLOR = (0, 0, 255)
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 LINE = cv2.LINE_AA
@@ -25,14 +23,6 @@ results_folder = 'results'
 '''
 if not os.path.exists(results_folder):
     os.makedirs(results_folder)
-
-def select_folder():
-    folder_path = QFileDialog.getExistingDirectory(None, "Select Folder", options=QFileDialog.ShowDirsOnly)
-    return folder_path
-
-def select_file():
-    file_path, _ = QFileDialog.getOpenFileName(None, "Select File", filter="Video Files (*.mp4 *.avi *.wmv)")
-    return file_path
 
 def show_error_message(message):
     msg_box = QMessageBox()
@@ -142,37 +132,12 @@ def process_frame(frame, model, device):
         draw_falling_alarm(_image, bbox)
     return _image
 
-def process_video(video_path):
-    vid_cap = cv2.VideoCapture(video_path)
-
-    if not vid_cap.isOpened():
-        print('Error while trying to read video. Please check path again')
-        return
-
-    model, device = get_pose_model()
-    vid_out = prepare_vid_out(video_path, vid_cap)
-
-    frames = []
-    success, frame = vid_cap.read()
-    while success:
-        frames.append(frame)
-        success, frame = vid_cap.read()
-
-    with ThreadPoolExecutor() as executor:
-        processed_frames = list(tqdm(executor.map(lambda f: process_frame(f, model, device), frames), total=len(frames)))
-
-    for _image in processed_frames:
-        vid_out.write(_image)
-
-    vid_out.release()
-    print("Processing video:", video_path)
-
 def process_video2():
     # 전체 프로세스 함수
     vid_cap = cv2.VideoCapture(0,cv2.CAP_DSHOW) 
 
     if not vid_cap.isOpened():
-        print('Error while trying to read video. Please check path again')
+        show_error_message('Error while trying to read video. Please check path again')
         return
     # 포즈 얻기
     model, device = get_pose_model()
@@ -205,40 +170,3 @@ def process_video2():
 
     vid_cap.release()
     cv2.destroyAllWindows()
-
-
-def main():
-    '''
-    app = QApplication([])
-    options = ("Select Folder", "Select Video File", "Select Webcam")
-    option, _ = QInputDialog.getItem(None, "Options", "Select an option:", options, 0, False)
-
-    if option == "Select Folder":
-        selected_path = select_folder()
-        if selected_path:
-            video_files = []
-            for file in os.listdir(selected_path):
-                if file.endswith(('.mp4', '.avi', '.wmv')):
-                    video_path = os.path.join(selected_path, file)
-                    video_files.append(video_path)
-
-            if video_files:
-                for video_path in video_files:
-                    process_video(video_path)
-            else:
-                print("No video files found in the selected folder.")
-        else:
-            print("Invalid folder selection.")
-    elif option == "Select Video File":
-        video_path = QFileDialog.getOpenFileName(None, "Select Video File", "", "Video Files (*.mp4 *.avi *.wmv)")[0]
-        if video_path:
-            process_video(video_path)
-        else:
-            print("Invalid video file selection.")
-    elif option == "Select Webcam":
-        process_video2()
-    app.quit()
-    '''
-
-if __name__ == '__main__':
-    main()

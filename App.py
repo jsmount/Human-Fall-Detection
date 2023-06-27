@@ -1,35 +1,43 @@
 import sys
 import os
 import threading
+import subprocess
 from PyQt5.QtWidgets import QApplication, QWidget
 from PyQt5.QtWidgets import QLabel, QVBoxLayout, QHBoxLayout, QPushButton, QDesktopWidget, QProgressBar, QFileDialog, QMessageBox, QMainWindow
 from PyQt5.QtGui import QColor, QFont, QIcon, QPixmap
-from PyQt5.QtCore import Qt, QThread, pyqtSignal
+from PyQt5.QtCore import Qt, pyqtSignal
 from main import *
 
-class VideoProcessingThread(QThread):
-    finished = pyqtSignal()
-
-    def __init__(self, video_path):
-        super().__init__()
-        self.video_path = video_path
-        self.selected = ""
-
-    def run(self):
-        process_video(self.video_path)
-        self.finished.emit()
-
 class SecondPage(QWidget):  
+    finished = pyqtSignal()
+    progressed = pyqtSignal(int)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.video_threads = []
-        self.finished = pyqtSignal()
         self.selected = ""
         self.select_file_button = QPushButton(self)
         self.select_folder_button = QPushButton(self)
         self.select_webcam_button = QPushButton(self)
+        self.result_button = QPushButton("결과 확인하기", self)
+        self.selected_file_label = QLabel(self)
+        self.finished.connect(self.process_video_finished)
+        self.progressed_value = 0
+        self.progressed.connect(self.update_progress)
         self.initUI()
         self.show()
+
+    def set_progressed_value(self, value):
+        self.progressed_value = value
+        self.progressed.emit(self.progressed_value)  # 시그널 발생
+
+        if self.progressed_value == 100:
+            self.result_button.setStyleSheet(
+                'background-color: rgb(52, 152, 219); color: white; border: none; border-radius: 5px;'
+            )
+            self.result_button.setEnabled(True)
+
+        self.video_threads = []
     
     def center(self):
         qr = self.frameGeometry()
@@ -180,20 +188,28 @@ class SecondPage(QWidget):
         
         vbox2 = QVBoxLayout()
 
-        selected_file_label = QLabel(self)
-        selected_file_label.setText("선택된 파일: ")
-        selected_file_label.setFixedHeight(20)
-        vbox2.addWidget(selected_file_label)
 
-        progress_bar = QProgressBar(self)
-        progress_bar.setFixedHeight(30)
-        vbox2.addWidget(progress_bar)
+        self.selected_file_label.setText("선택된 파일 또는 폴더: ")
+        self.selected_file_label.setFixedHeight(20)
+        vbox2.addWidget(self.selected_file_label)
+
+        self.progress_bar = QProgressBar(self)
+        self.progress_bar.setFixedHeight(30)
+        self.progress_bar.setValue(0)
+        vbox2.addWidget(self.progress_bar)
 
         hbox4.addLayout(vbox2)
 
-        result_button = ResultButton("결과 확인하기", self)
-        result_button.setFixedHeight(50)
-        hbox4.addWidget(result_button)
+        # ResultButton("결과 확인하기", self)
+        self.result_button.setFixedWidth(200)
+        self.result_button.setFixedHeight(50)
+        self.result_button.setFont(QFont('Arial', 12))
+        self.result_button.setStyleSheet(
+            'background-color: gray; color: white; border: none; border-radius: 5px;'
+        )
+        self.result_button.setEnabled(False)
+        self.result_button.clicked.connect(self.show_result)
+        hbox4.addWidget(self.result_button)
 
         hbox4.setAlignment(Qt.AlignRight)
         hbox4.setContentsMargins(0, 20, 20, 0)
@@ -214,6 +230,11 @@ class SecondPage(QWidget):
             self.select_folder()
         elif self.selected == "Select Webcam":
             self.select_webcam()
+
+    def show_result(self, _event):
+        current_path = os.getcwd()
+        folder_path = os.path.join(current_path, "results")
+        subprocess.Popen(f'explorer "{folder_path}"')
 
     def clicked_select_file(self, _event):
         self.selected = "Select File"
@@ -248,6 +269,7 @@ class SecondPage(QWidget):
         
         folder_path = QFileDialog.getExistingDirectory(None, "Select Folder", options=QFileDialog.ShowDirsOnly)
         if folder_path:
+            self.selected_file_label.setText(f"선택된 파일 또는 폴더: {folder_path}")
             video_files = []
             for file in os.listdir(folder_path):
                 if file.endswith(('.mp4', '.avi', '.wmv')):
@@ -256,10 +278,9 @@ class SecondPage(QWidget):
 
             if video_files:
                 for video_path in video_files:
-                    video_thread = VideoProcessingThread(video_path)
-                    video_thread.finished.connect(self.process_video_finished)
-                    self.video_threads.append(video_thread)
+                    video_thread = threading.Thread(target=self.process_video, args=(video_path,))
                     video_thread.start()
+                    self.video_threads.append(video_thread)
             else:
                 show_error_message("No video files found in the selected folder.")
         return folder_path
@@ -271,14 +292,14 @@ class SecondPage(QWidget):
 
         video_path = QFileDialog.getOpenFileName(None, "Select Video File", "", "Video Files (*.mp4 *.avi *.wmv)")[0]
         if video_path:
-            video_thread = VideoProcessingThread(video_path)
-            video_thread.finished.connect(self.process_video_finished)
-            self.video_threads.append(video_thread)
+            self.selected_file_label.setText(f"선택된 파일 또는 폴더: {video_path}")
+            video_thread = threading.Thread(target=self.process_video, args=(video_path,))
             video_thread.start()
+            self.video_threads.append(video_thread)
         else:
             show_error_message("Invalid video file selection.")
         return video_path
-    
+
     def select_webcam(self):
         if self.video_threads:
             show_error_message("A video processing is already in progress.")
@@ -287,12 +308,44 @@ class SecondPage(QWidget):
         video_thread = threading.Thread(target = process_video2)
         video_thread.start()
         return None
+    
+    def process_video(self, video_path):
+        vid_cap = cv2.VideoCapture(video_path)
+
+        if not vid_cap.isOpened():
+            show_error_message('Error while trying to read video. Please check path again')
+            return
+
+        model, device = get_pose_model()
+        vid_out = prepare_vid_out(video_path, vid_cap)
+
+        frames = []
+        success, frame = vid_cap.read()
+        frame_count = 0
+        while success:
+            frames.append(frame)
+            success, frame = vid_cap.read()
+            frame_count += 1
+
+        for i, image in enumerate(frames):
+            processed_image = process_frame(image, model, device)
+            vid_out.write(processed_image)
+            progress = int((i + 1) / frame_count * 100)
+            self.set_progressed_value(progress)
+            QApplication.processEvents()
+
+        vid_cap.release()
+        vid_out.release()
+        print("Processing video:", video_path)
+        self.finished.emit()
+    
+    def update_progress(self, value):
+        self.progress_bar.setValue(value)
 
     def process_video_finished(self):
         # 비동기 작업이 완료될 때 호출되는 콜백 함수
         print("Video processing finished.")
-        #finished.disconnect(self.process_video_finished)
-        self.deleteLater()
+        self.finished.disconnect(self.process_video_finished)
     
 
     def show_error_message(self, message, _event):
@@ -307,26 +360,12 @@ class ResultButton(QPushButton):
         super().__init__(parent)
         self.setFixedWidth(200)
         self.setFixedHeight(40)
-        self.value=0
         self.setFont(QFont('Arial', 12))
         self.setStyleSheet(
             'background-color: gray; color: white; border: none; border-radius: 5px;'
         )
         self.setEnabled(False)
         self.setText(text)
-
-    def update_button_state(self, value):
-        self.setValue(value)
-        if value == 100:
-            self.setEnabled(True)
-            self.setStyleSheet(
-                'background-color: rgb(52, 152, 219); color: white; border: none; border-radius: 5px;'
-            )
-        else:
-            self.setEnabled(False)
-            self.setStyleSheet(
-            'background-color: gray; color: white; border: none; border-radius: 5px;'
-            )
 
 class MyApp(QWidget):
     
@@ -421,14 +460,11 @@ class MyApp(QWidget):
         self.hide()
         self.second = SecondPage()
 
-def run_app():
+def main():
     app = QApplication(sys.argv)
     my_app = MyApp()
     my_app.show()
     app.exec_()
 
 if __name__ == "__main__":
-    app_thread = threading.Thread(target=run_app)
-    app_thread.start()
-    app_thread.join()
-    
+    main()
