@@ -14,15 +14,15 @@ class SecondPage(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.video_threads = []
-        self.selected = ""
+        self.video_threads = [] # video_threads가 비어있는 경우에만 동영상 처리를 진행할 수 있음
+        self.selected = "" # select file, select folder, select webcam 중 하나 선택 후 선택된 string값을 저장
         self.select_file_button = QPushButton(self)
         self.select_folder_button = QPushButton(self)
         self.select_webcam_button = QPushButton(self)
         self.result_button = QPushButton("결과 확인하기", self)
         self.selected_file_label = QLabel(self)
         self.finished.connect(self.process_video_finished)
-        self.progressed_value = 0
+        self.progressed_value = 0 # 진행 정도를 나타내는 변수
         self.progressed.connect(self.update_progress)
         self.initUI()
         self.show()
@@ -31,34 +31,36 @@ class SecondPage(QWidget):
         self.progressed_value = value
         self.progressed.emit(self.progressed_value)  # 시그널 발생
 
-        if self.progressed_value == 100:
+        if self.progressed_value == 100:    # 진행바 값이 100인 경우
             self.result_button.setStyleSheet(
                 'background-color: rgb(52, 152, 219); color: white; border: none; border-radius: 5px;'
             )
-            self.result_button.setEnabled(True)
+            self.result_button.setEnabled(True) # 결과 보기 버튼 활성화
+            self.video_threads = []     # video_thread 초기화
 
-        self.video_threads = []
-    
     def center(self):
+        '''
+            화면에 가운데에 위치하도록 하는 함수
+        '''
         qr = self.frameGeometry()
         cp = QDesktopWidget().availableGeometry().center()
         qr.moveCenter(cp)
         self.move(qr.topLeft())
 
     def initUI(self):
-        self.setWindowTitle("Human_Fall_Detection")
-        self.setWindowIcon(QIcon("icons/fall_icon.png"))
-        self.resize(1000,600)
-        self.center()
+        self.setWindowTitle("Human_Fall_Detection") # 창 제목
+        self.setWindowIcon(QIcon("icons/fall_icon.png")) # 창 제목 옆에나오는 아이콘
+        self.resize(1000,600) # 창 크기 가로 1000, 세로 600
+        self.center() # 가운데에 위치하도록
     
         vbox = QVBoxLayout()
 
-        hbox = QHBoxLayout()
+        hbox = QHBoxLayout()    # 옵션 선택, x 버튼 포함
 
         label = QLabel(self)
         label.setText("옵션 선택")
         label.setFont(QFont('Arial', 16, QFont.Bold))
-        label.setContentsMargins(20, 10, 0, 0)
+        label.setContentsMargins(20, 10, 0, 0) # 마진은 왼쪽, 위, 오른쪽, 아래 순서
         label.setFixedHeight(40)
         hbox.addWidget(label)
 
@@ -69,7 +71,7 @@ class SecondPage(QWidget):
         hbox.addWidget(close_label)
 
         vbox.addLayout(hbox)
-        vbox.addStretch(1)
+        vbox.addStretch(1) # 필요한 공간을 만들기 위해 사용하는 함수
 
         hbox2 = QHBoxLayout()
 
@@ -168,6 +170,8 @@ class SecondPage(QWidget):
 
         vbox.addLayout(hbox2)
 
+        # 이상행동 감지하기 버튼 
+
         detect_button = QPushButton("이상행동 감지하기", self)
         detect_button.setFixedWidth(200)
         detect_button.setFixedHeight(50)
@@ -205,40 +209,50 @@ class SecondPage(QWidget):
         self.result_button.setFixedHeight(50)
         self.result_button.setFont(QFont('Arial', 12))
         self.result_button.setStyleSheet(
+            # 비활성화 상태의 style
             'background-color: gray; color: white; border: none; border-radius: 5px;'
         )
-        self.result_button.setEnabled(False)
-        self.result_button.clicked.connect(self.show_result)
+        self.result_button.setEnabled(False) # 비활성화
+        self.result_button.clicked.connect(self.show_result) # 버튼을 클릭하는 경우 show_result 함수 실행
         hbox4.addWidget(self.result_button)
 
         hbox4.setAlignment(Qt.AlignRight)
-        hbox4.setContentsMargins(0, 20, 20, 0)
+        hbox4.setContentsMargins(0, 20, 20, 0)  # 위, 오른쪽에 20씩 마진
 
         vbox.addLayout(hbox4)
 
         self.setLayout(vbox)
 
-        close_label.mousePressEvent = self.close_window
+        close_label.mousePressEvent = self.close_window     # close_label(x 버튼)을 클릭하는 경우 close_window 함수 실행
     
     def close_window(self, _event):
-        self.close()
+        self.close()    # 창 닫기
 
     def start_detect(self, _event):
-        if self.selected == "Select File":
+        '''
+            이상행동 감지하기 버튼을 눌렀을 때 실행되는 함수
+        '''
+        if self.selected == "Select File":  # 선택된 값이 select file이라면 select_file() 함수 실행
             self.select_file()
-        elif self.selected == "Select Folder":
+        elif self.selected == "Select Folder": # 선택된 값이 select folder select_folder() 함수 실행
             self.select_folder()
-        elif self.selected == "Select Webcam":
+        elif self.selected == "Select Webcam": # 선택된 값이 select webcam이라면 select_webcam() 함수 실행
             self.select_webcam()
 
     def show_result(self, _event):
+        '''
+            파일 탐색기를 이용해 결과 폴더를 열어준다.
+        '''
         current_path = os.getcwd()
         folder_path = os.path.join(current_path, "results")
         subprocess.Popen(f'explorer "{folder_path}"')
 
     def clicked_select_file(self, _event):
-        self.selected = "Select File"
-        self.set_button_border_color()
+        '''
+            선택된 옵션이 select file인 경우
+        '''
+        self.selected = "Select File" 
+        self.set_button_border_color() # 선택된 버튼의 border를 파란색으로 설정
 
     def clicked_select_folder(self, _event):
         self.selected = "Select Folder"
@@ -263,7 +277,10 @@ class SecondPage(QWidget):
             self.select_webcam_button.setStyleSheet("background-color: #cccccc; color: black; border: 2px solid #3498db; border-radius: 5px;")
 
     def select_folder(self):
-        if self.video_threads:
+        '''
+            select folder 버튼을 클릭한 경우 실행되는 함수
+        '''
+        if self.video_threads: # video_threads가 존재한다면 이미 처리가 진행중인 영상이 존재함을 의미 => 오류 메시지 출력
             show_error_message("A video processing is already in progress.")
             return
         
@@ -286,6 +303,9 @@ class SecondPage(QWidget):
         return folder_path
 
     def select_file(self):
+        '''
+            select file 버튼을 클릭한 경우 실행되는 함수
+        '''
         if self.video_threads:
             show_error_message("A video processing is already in progress.")
             return
@@ -301,6 +321,9 @@ class SecondPage(QWidget):
         return video_path
 
     def select_webcam(self):
+        '''
+            select webcam 버튼을 클릭한 경우 실행되는 함수
+        '''
         if self.video_threads:
             show_error_message("A video processing is already in progress.")
             return
@@ -310,6 +333,9 @@ class SecondPage(QWidget):
         return None
     
     def process_video(self, video_path):
+        '''
+            select file, select folder의 경우 영상 처리를 위해 실행되는 함수
+        '''
         vid_cap = cv2.VideoCapture(video_path)
 
         if not vid_cap.isOpened():
@@ -340,6 +366,9 @@ class SecondPage(QWidget):
         self.finished.emit()
     
     def update_progress(self, value):
+        '''
+            진행바의 값을 업데이트 하는 함수
+        '''
         self.progress_bar.setValue(value)
 
     def process_video_finished(self):
@@ -349,26 +378,19 @@ class SecondPage(QWidget):
     
 
     def show_error_message(self, message, _event):
+        '''
+            에러 메시지를 출력해주는 함수
+        '''
         msg_box = QMessageBox()
         msg_box.setIcon(QMessageBox.Critical)
         msg_box.setWindowTitle("Error")
         msg_box.setText(message)
         msg_box.exec_()
 
-class ResultButton(QPushButton):
-    def __init__(self, text, parent=None):
-        super().__init__(parent)
-        self.setFixedWidth(200)
-        self.setFixedHeight(40)
-        self.setFont(QFont('Arial', 12))
-        self.setStyleSheet(
-            'background-color: gray; color: white; border: none; border-radius: 5px;'
-        )
-        self.setEnabled(False)
-        self.setText(text)
-
 class MyApp(QWidget):
-    
+    '''
+        첫 번째 페이지
+    '''
     def __init__(self):
         super().__init__()
         self.initUI()
