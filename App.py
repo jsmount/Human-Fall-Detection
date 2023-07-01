@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import QLabel, QVBoxLayout, QHBoxLayout, QPushButton, QDesk
 from PyQt5.QtGui import QColor, QFont, QIcon, QPixmap
 from PyQt5.QtCore import Qt, pyqtSignal
 from main import *
+import time
 
 class SecondPage(QWidget):  
     finished = pyqtSignal()
@@ -347,7 +348,6 @@ class SecondPage(QWidget):
         if not vid_cap.isOpened():
             show_error_message('Error while trying to read video. Please check path again')
             return
-
         model, device = get_pose_model()
         vid_out = prepare_vid_out(video_path, vid_cap)
 
