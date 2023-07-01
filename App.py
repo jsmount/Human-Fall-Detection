@@ -3,7 +3,7 @@ import os
 import threading
 import subprocess
 from PyQt5.QtWidgets import QApplication, QWidget
-from PyQt5.QtWidgets import QLabel, QVBoxLayout, QHBoxLayout, QPushButton, QDesktopWidget, QProgressBar, QFileDialog, QMessageBox, QMainWindow
+from PyQt5.QtWidgets import QLabel, QVBoxLayout, QHBoxLayout, QPushButton, QDesktopWidget, QProgressBar, QFileDialog, QMessageBox
 from PyQt5.QtGui import QColor, QFont, QIcon, QPixmap
 from PyQt5.QtCore import Qt, pyqtSignal
 from main import *
@@ -21,6 +21,7 @@ class SecondPage(QWidget):
         self.select_webcam_button = QPushButton(self)
         self.result_button = QPushButton("결과 확인하기", self)
         self.selected_file_label = QLabel(self)
+        self.frame_count = 0
         self.finished.connect(self.process_video_finished)
         self.progressed_value = 0 # 진행 정도를 나타내는 변수
         self.progressed.connect(self.update_progress)
@@ -288,14 +289,18 @@ class SecondPage(QWidget):
         if folder_path:
             self.selected_file_label.setText(f"선택된 파일 또는 폴더: {folder_path}")
             video_files = []
+
             for file in os.listdir(folder_path):
                 if file.endswith(('.mp4', '.avi', '.wmv')):
                     video_path = os.path.join(folder_path, file)
                     video_files.append(video_path)
-
+            
             if video_files:
-                for video_path in video_files:
-                    video_thread = threading.Thread(target=self.process_video, args=(video_path,))
+                vid_caps = [cv2.VideoCapture(video_path) for video_path in video_files]
+                self.frame_count = 0
+                self.total_count = sum([int(vid_cap.get(cv2.CAP_PROP_FRAME_COUNT)) for vid_cap in vid_caps])
+                for idx, video_path in enumerate(video_files):
+                    video_thread = threading.Thread(target=self.process_video, args=(video_path, vid_caps[idx],))
                     video_thread.start()
                     self.video_threads.append(video_thread)
             else:
@@ -313,7 +318,10 @@ class SecondPage(QWidget):
         video_path = QFileDialog.getOpenFileName(None, "Select Video File", "", "Video Files (*.mp4 *.avi *.wmv)")[0]
         if video_path:
             self.selected_file_label.setText(f"선택된 파일 또는 폴더: {video_path}")
-            video_thread = threading.Thread(target=self.process_video, args=(video_path,))
+            self.frame_count = 0
+            vid_cap = cv2.VideoCapture(video_path)
+            self.total_count = int(vid_cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            video_thread = threading.Thread(target=self.process_video, args=(video_path, vid_cap,))
             video_thread.start()
             self.video_threads.append(video_thread)
         else:
@@ -332,12 +340,10 @@ class SecondPage(QWidget):
         video_thread.start()
         return None
     
-    def process_video(self, video_path):
+    def process_video(self, video_path, vid_cap):
         '''
             select file, select folder의 경우 영상 처리를 위해 실행되는 함수
         '''
-        vid_cap = cv2.VideoCapture(video_path)
-
         if not vid_cap.isOpened():
             show_error_message('Error while trying to read video. Please check path again')
             return
@@ -347,23 +353,33 @@ class SecondPage(QWidget):
 
         frames = []
         success, frame = vid_cap.read()
-        frame_count = 0
         while success:
             frames.append(frame)
             success, frame = vid_cap.read()
-            frame_count += 1
 
         for i, image in enumerate(frames):
             processed_image = process_frame(image, model, device)
             vid_out.write(processed_image)
-            progress = int((i + 1) / frame_count * 100)
-            self.set_progressed_value(progress)
+
+            self.increment_frame_count()
             QApplication.processEvents()
 
         vid_cap.release()
         vid_out.release()
         print("Processing video:", video_path)
         self.finished.emit()
+
+    def increment_frame_count(self):
+        self.frame_count += 1
+        self.progressed_value = (self.frame_count / (self.total_count - 1)) * 100
+        self.progressed.emit(self.progressed_value)  # 시그널 발생
+
+        if self.frame_count == (self.total_count - 1):
+            self.result_button.setStyleSheet(
+                'background-color: rgb(52, 152, 219); color: white; border: none; border-radius: 5px;'
+            )
+            self.result_button.setEnabled(True) # 결과 보기 버튼 활성화
+            self.video_threads = []     # video_thread 초기화
     
     def update_progress(self, value):
         '''

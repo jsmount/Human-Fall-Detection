@@ -8,15 +8,14 @@ from torchvision import transforms
 from utils.datasets import letterbox
 from utils.general import non_max_suppression_kpt
 from utils.plots import output_to_keypoint
-from PyQt5.QtWidgets import QApplication, QFileDialog, QMessageBox, QInputDialog
-from concurrent.futures import ThreadPoolExecutor
+from PyQt5.QtWidgets import QMessageBox
 import sys
 
 RED_COLOR = (0, 0, 255)
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 LINE = cv2.LINE_AA
 
-results_folder = 'results'
+results_folder = 'results' # 바꿀 수 있으면 좋다.
 
 '''
     root에 results 폴더가 존재하지 않으면 알아서 생성
