@@ -3,25 +3,31 @@ import os
 import threading
 import subprocess
 from PyQt5.QtWidgets import QApplication, QWidget
-from PyQt5.QtWidgets import QLabel, QVBoxLayout, QHBoxLayout, QPushButton, QDesktopWidget, QProgressBar, QFileDialog, QMessageBox
-from PyQt5.QtGui import QColor, QFont, QIcon, QPixmap
+from PyQt5.QtWidgets import QLabel, QVBoxLayout, QHBoxLayout, QPushButton, QDesktopWidget, QProgressBar, QFileDialog, QMessageBox, QGridLayout, QFrame
+from PyQt5.QtGui import QColor, QFont, QIcon, QPixmap, QPalette
 from PyQt5.QtCore import Qt, pyqtSignal
 from main import *
-import time
 
 class SecondPage(QWidget):  
     finished = pyqtSignal()
     progressed = pyqtSignal(int)
 
-    def __init__(self, parent=None):
+    def __init__(self, previousPage, parent=None):
         super().__init__(parent)
+        self.previousPage = previousPage
+        pal = QPalette()
+        pal.setColor(QPalette.Background,QColor(255,255,255))
+        self.setAutoFillBackground(True)
+        self.setPalette(pal)
         self.video_threads = [] # video_threads가 비어있는 경우에만 동영상 처리를 진행할 수 있음
         self.selected = "" # select file, select folder, select webcam 중 하나 선택 후 선택된 string값을 저장
         self.select_file_button = QPushButton(self)
         self.select_folder_button = QPushButton(self)
-        self.select_webcam_button = QPushButton(self)
+        self.select_webcam_button_in = QPushButton(self)
+        self.select_webcam_button_out = QPushButton(self)
         self.result_button = QPushButton("결과 확인하기", self)
         self.selected_file_label = QLabel(self)
+        self.camera_num = 0
         self.frame_count = 0
         self.finished.connect(self.process_video_finished)
         self.progressed_value = 0 # 진행 정도를 나타내는 변수
@@ -57,23 +63,51 @@ class SecondPage(QWidget):
     
         vbox = QVBoxLayout()
 
-        hbox = QHBoxLayout()    # 옵션 선택, x 버튼 포함
+        grid = QGridLayout()
 
-        label = QLabel(self)
-        label.setText("옵션 선택")
-        label.setFont(QFont('Arial', 16, QFont.Bold))
-        label.setContentsMargins(20, 10, 0, 0) # 마진은 왼쪽, 위, 오른쪽, 아래 순서
-        label.setFixedHeight(40)
-        hbox.addWidget(label)
+        back_label = QLabel(self)
+        back_label.setPixmap(QPixmap("icons/arrow.png").scaled(20, 20, Qt.AspectRatioMode.KeepAspectRatio))
+        back_label.setFixedHeight(40)
+        back_label.mousePressEvent = self.go_back
+        grid.addWidget(back_label, 0, 0, Qt.AlignLeft)
+
+        copylight_label = QLabel(self)
+        copylight_label.setText("Copyright 2023, Team DSS all rights reserved.")
+        copylight_label.setFont(QFont('Times New Roman', 11))
+        copylight_label.setFixedHeight(40)
+        grid.addWidget(copylight_label, 0, 1, Qt.AlignRight)
 
         close_label = QLabel(self)
         close_label.setPixmap(QPixmap("icons/close.png").scaled(20, 20, Qt.AspectRatioMode.KeepAspectRatio))
-        close_label.setAlignment(Qt.AlignRight)
         close_label.setFixedHeight(40)
-        hbox.addWidget(close_label)
+        close_label.setFixedWidth(30)
+        grid.addWidget(close_label, 0, 2, Qt.AlignRight)
 
-        vbox.addLayout(hbox)
-        vbox.addStretch(1) # 필요한 공간을 만들기 위해 사용하는 함수
+        grid.setColumnStretch(0, 20)
+        grid.setColumnStretch(1, 7)
+        grid.setColumnStretch(2, 1)
+
+        vbox.addLayout(grid)
+
+        title_layout = QGridLayout()
+
+        left_warn_image = QLabel(self)
+        left_warn_image.setPixmap(QPixmap("icons/warning-red.png").scaled(40, 40, Qt.AspectRatioMode.KeepAspectRatio))
+        title_layout.addWidget(left_warn_image, 0, 0, Qt.AlignRight)
+
+        label = QLabel(self)
+        label.setText("AI 딥러닝 기반의 실시간 위험 감지 시스템")
+        label.setFont(QFont('Arial', 20, QFont.Bold))
+        label.setStyleSheet("color: red;")
+        label.setAlignment(Qt.AlignCenter)
+        label.setFixedHeight(40)
+        title_layout.addWidget(label, 0, 1, Qt.AlignCenter)
+
+        right_warn_image = QLabel(self)
+        right_warn_image.setPixmap(QPixmap("icons/warning-red.png").scaled(40, 40, Qt.AspectRatioMode.KeepAspectRatio))
+        title_layout.addWidget(right_warn_image, 0, 2, Qt.AlignLeft)
+
+        vbox.addLayout(title_layout)
 
         hbox2 = QHBoxLayout()
 
@@ -105,7 +139,7 @@ class SecondPage(QWidget):
         select_file_detail.setStyleSheet("border: none;")
         select_filelayout.addWidget(select_file_detail)
 
-        self.select_file_button.setStyleSheet("background-color: #cccccc; color: black; border: none; border-radius: 5px;")
+        self.select_file_button.setStyleSheet("background-color: white; color: black; border: 2px solid black; border-radius: 5px;")
         hbox2.addWidget(self.select_file_button)
 
         # select folder
@@ -136,47 +170,84 @@ class SecondPage(QWidget):
         select_folder_detail.setStyleSheet("border: none;")
         select_folder_layout.addWidget(select_folder_detail)
 
-        self.select_folder_button.setStyleSheet("background-color: #cccccc; color: black; border: none; border-radius: 5px;")
+        self.select_folder_button.setStyleSheet("background-color: white; color: black; border: 2px solid black; border-radius: 5px;")
         hbox2.addWidget(self.select_folder_button)
 
         # select webcam
 
-        self.select_webcam_button.setFixedWidth(300)
-        self.select_webcam_button.setFixedHeight(350)
-        self.select_webcam_button.clicked.connect(self.clicked_select_webcam)
+        webcam_buttons_layout = QVBoxLayout()
 
-        select_webcam_layout = QVBoxLayout(self.select_webcam_button)
+        self.select_webcam_button_in.setFixedWidth(300)
+        self.select_webcam_button_in.setFixedHeight(170)
+        self.select_webcam_button_in.clicked.connect(self.clicked_select_webcam_in)
+
+        select_webcam_layout = QVBoxLayout(self.select_webcam_button_in)
         select_webcam_layout.setSpacing(10)
 
-        select_webcam_title = QLabel("Select Webcam", self)
+        select_webcam_title = QLabel("Inside CCTV", self)
         select_webcam_title.setAlignment(Qt.AlignCenter)
         select_webcam_title.setFont(QFont('Arial', 18, QFont.Bold))
         select_webcam_title.setStyleSheet("border: none;")
         select_webcam_layout.addWidget(select_webcam_title)
 
         select_webcam_icon = QLabel(self)
-        select_webcam_icon.setPixmap(QPixmap("icons/dslr-camera-gray.png").scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio))
+        select_webcam_icon.setPixmap(QPixmap("icons/camera.png").scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio))
         select_webcam_icon.setAlignment(Qt.AlignCenter)
         select_webcam_icon.setStyleSheet("border: none;")
         select_webcam_layout.addWidget(select_webcam_icon)
 
         select_webcam_detail = QLabel(self)
-        select_webcam_detail.setText("웹캠 선택하기")
+        select_webcam_detail.setText("내부 CCTV 선택하기")
         select_webcam_detail.setAlignment(Qt.AlignCenter)
         select_webcam_detail.setFont(QFont('Arial', 12))
         select_webcam_detail.setStyleSheet("border: none;")
         select_webcam_layout.addWidget(select_webcam_detail)
 
-        self.select_webcam_button.setStyleSheet("background-color: #cccccc; color: black; border: none; border-radius: 5px;")
-        hbox2.addWidget(self.select_webcam_button)
+        self.select_webcam_button_in.setStyleSheet("background-color: white; color: black; border: 2px solid black; border-radius: 5px;")
+        webcam_buttons_layout.addWidget(self.select_webcam_button_in)
 
+
+        # select webcam_2
+
+        self.select_webcam_button_out.setFixedWidth(300)
+        self.select_webcam_button_out.setFixedHeight(170)
+        self.select_webcam_button_out.clicked.connect(self.clicked_select_webcam_out)
+
+        select_webcam_layout = QVBoxLayout(self.select_webcam_button_out)
+        select_webcam_layout.setSpacing(10)
+
+        select_webcam_title = QLabel("Outside CCTV", self)
+        select_webcam_title.setAlignment(Qt.AlignCenter)
+        select_webcam_title.setFont(QFont('Arial', 18, QFont.Bold))
+        select_webcam_title.setStyleSheet("border: none;")
+        select_webcam_layout.addWidget(select_webcam_title)
+
+        select_webcam_icon = QLabel(self)
+        select_webcam_icon.setPixmap(QPixmap("icons/cctv-camera.png").scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio))
+        select_webcam_icon.setAlignment(Qt.AlignCenter)
+        select_webcam_icon.setStyleSheet("border: none;")
+        select_webcam_layout.addWidget(select_webcam_icon)
+
+        select_webcam_detail = QLabel(self)
+        select_webcam_detail.setText("외부 CCTV 선택하기")
+        select_webcam_detail.setAlignment(Qt.AlignCenter)
+        select_webcam_detail.setFont(QFont('Arial', 12))
+        select_webcam_detail.setStyleSheet("border: none;")
+        select_webcam_layout.addWidget(select_webcam_detail)
+
+        self.select_webcam_button_out.setStyleSheet("background-color: white; color: black; border: 2px solid black; border-radius: 5px;")
+        webcam_buttons_layout.addWidget(self.select_webcam_button_out)
+
+        hbox2.addLayout(webcam_buttons_layout)
         vbox.addLayout(hbox2)
+
 
         # 이상행동 감지하기 버튼 
 
         detect_button = QPushButton("이상행동 감지하기", self)
         detect_button.setFixedWidth(200)
         detect_button.setFixedHeight(50)
+        detect_button.setContentsMargins(0, 10, 0, 0)
         detect_button.setFont(QFont('Arial', 12))
         detect_button.setStyleSheet("background-color: rgb(52, 152, 219); color: white; border: none; border-radius: 5px;")
         detect_button.clicked.connect(self.start_detect)
@@ -219,7 +290,7 @@ class SecondPage(QWidget):
         hbox4.addWidget(self.result_button)
 
         hbox4.setAlignment(Qt.AlignRight)
-        hbox4.setContentsMargins(0, 20, 20, 0)  # 위, 오른쪽에 20씩 마진
+        hbox4.setContentsMargins(0, 0, 20, 0)
 
         vbox.addLayout(hbox4)
 
@@ -230,6 +301,10 @@ class SecondPage(QWidget):
     def close_window(self, _event):
         self.close()    # 창 닫기
 
+    def go_back(self, _event):
+        self.close()
+        self.previousPage.show()
+
     def start_detect(self, _event):
         '''
             이상행동 감지하기 버튼을 눌렀을 때 실행되는 함수
@@ -238,7 +313,9 @@ class SecondPage(QWidget):
             self.select_file()
         elif self.selected == "Select Folder": # 선택된 값이 select folder select_folder() 함수 실행
             self.select_folder()
-        elif self.selected == "Select Webcam": # 선택된 값이 select webcam이라면 select_webcam() 함수 실행
+        elif self.selected == "Select Webcam In": # 선택된 값이 select webcam이라면 select_webcam() 함수 실행
+            self.select_webcam()
+        elif self.selected == "Select Webcam Out": # 선택된 값이 select webcam이라면 select_webcam() 함수 실행
             self.select_webcam()
 
     def show_result(self, _event):
@@ -260,23 +337,32 @@ class SecondPage(QWidget):
         self.selected = "Select Folder"
         self.set_button_border_color()
 
-    def clicked_select_webcam(self, _event):
-        self.selected = "Select Webcam"
+    def clicked_select_webcam_in(self, _event):
+        self.selected = "Select Webcam In"
+        self.camera_num = 0
+        self.set_button_border_color()
+
+    def clicked_select_webcam_out(self, _event):
+        self.selected = "Select Webcam Out"
+        self.camera_num = 1
         self.set_button_border_color()
 
     def set_button_border_color(self):
     # 모든 버튼의 테두리 색상을 회색으로 초기화
-        self.select_file_button.setStyleSheet("background-color: #cccccc; color: black; border: none; border-radius: 5px;")
-        self.select_folder_button.setStyleSheet("background-color: #cccccc; color: black; border: none; border-radius: 5px;")
-        self.select_webcam_button.setStyleSheet("background-color: #cccccc; color: black; border: none; border-radius: 5px;")
+        self.select_file_button.setStyleSheet("background-color: white; color: black; border: 2px solid black; border-radius: 5px;")
+        self.select_folder_button.setStyleSheet("background-color: white; color: black; border: 2px solid black; border-radius: 5px;")
+        self.select_webcam_button_in.setStyleSheet("background-color: white; color: black; border: 2px solid black; border-radius: 5px;")
+        self.select_webcam_button_out.setStyleSheet("background-color: white; color: black; border: 2px solid black; border-radius: 5px;")
 
         # 선택된 버튼의 테두리 색상을 파란색으로 설정
         if self.selected == "Select File":
-            self.select_file_button.setStyleSheet("background-color: #cccccc; color: black; border: 2px solid #3498db; border-radius: 5px;")
+            self.select_file_button.setStyleSheet("background-color: white; color: black; border: 2px solid #3498db; border-radius: 5px;")
         elif self.selected == "Select Folder":
-            self.select_folder_button.setStyleSheet("background-color: #cccccc; color: black; border: 2px solid #3498db; border-radius: 5px;")
-        elif self.selected == "Select Webcam":
-            self.select_webcam_button.setStyleSheet("background-color: #cccccc; color: black; border: 2px solid #3498db; border-radius: 5px;")
+            self.select_folder_button.setStyleSheet("background-color: white; color: black; border: 2px solid #3498db; border-radius: 5px;")
+        elif self.selected == "Select Webcam In":
+            self.select_webcam_button_in.setStyleSheet("background-color: white; color: black; border: 2px solid #3498db; border-radius: 5px;")
+        elif self.selected == "Select Webcam Out":
+            self.select_webcam_button_out.setStyleSheet("background-color: white; color: black; border: 2px solid #3498db; border-radius: 5px;")
 
     def select_folder(self):
         '''
@@ -337,7 +423,7 @@ class SecondPage(QWidget):
             show_error_message("A video processing is already in progress.")
             return
         
-        video_thread = threading.Thread(target = process_video2)
+        video_thread = threading.Thread(target = process_video2, args=(self.camera_num, ))
         video_thread.start()
         return None
     
@@ -348,6 +434,7 @@ class SecondPage(QWidget):
         if not vid_cap.isOpened():
             show_error_message('Error while trying to read video. Please check path again')
             return
+        
         model, device = get_pose_model()
         vid_out = prepare_vid_out(video_path, vid_cap)
 
@@ -358,6 +445,7 @@ class SecondPage(QWidget):
             success, frame = vid_cap.read()
 
         for i, image in enumerate(frames):
+
             processed_image = process_frame(image, model, device)
             vid_out.write(processed_image)
 
@@ -431,64 +519,121 @@ class MyApp(QWidget):
 
         label = QLabel(self)
         label.setText("Human Fall Detection")
-        label.setGeometry(0, 0, 500, 50)
         label.setFont(QFont('Arial', 24, QFont.Bold))
-        label.setContentsMargins(20, 20, 0, 0)
+        label.setStyleSheet("background-color: #7BC0FF; padding-left: 10px;")
+        label.setFixedHeight(100)
+
         vbox.addWidget(label)
+
+        explain_hbox = QHBoxLayout()
+
+        hbox_frame = QFrame()
+        hbox_frame.setStyleSheet("background-color: #EEEEEE;")
+
+        people_layout= QGridLayout()
+
+        group_pixmap = QPixmap("icons/group.png")
+        group_pixmap = group_pixmap.scaled(150, 150, Qt.AspectRatioMode.KeepAspectRatio)
+        group_label = QLabel()
+        group_label.setPixmap(group_pixmap)
+        people_layout.addWidget(group_label, 0, 0, Qt.AlignCenter)
+
+        people_detail_label = QLabel(self)
+        people_detail_label.setText("Detect\nMultiple People")
+        people_detail_label.setFont(QFont('Arial', 13))
+
+        people_layout.addWidget(people_detail_label, 1, 0, Qt.AlignCenter)
+
+        explain_hbox.addLayout(people_layout)
+
+        people_layout.setRowStretch(0, 7)
+        people_layout.setRowStretch(1, 3)
+
+        camera_layout= QGridLayout()
+
+        camera_detail_label = QLabel(self)
+        camera_detail_label.setText("Detect\nUsing video or camera")
+        camera_detail_label.setFont(QFont('Arial', 13))
+        camera_layout.addWidget(camera_detail_label, 0, 0, Qt.AlignCenter)
+
+        camera_pixmap = QPixmap("icons/dslr-camera.png")
+        camera_pixmap = camera_pixmap.scaled(150, 150, Qt.AspectRatioMode.KeepAspectRatio)
+        camera_label = QLabel()
+        camera_label.setPixmap(camera_pixmap)
+        camera_layout.addWidget(camera_label, 1, 0, Qt.AlignCenter)
+
+        explain_hbox.addLayout(camera_layout)
+
+        camera_layout.setRowStretch(0, 3)
+        camera_layout.setRowStretch(1, 7)
+
+        fall_layout= QGridLayout()
+
+        fall_pixmap = QPixmap("icons/group.png")
+        fall_pixmap = fall_pixmap.scaled(150, 150, Qt.AspectRatioMode.KeepAspectRatio)
+        fall_label = QLabel()
+        fall_label.setPixmap(fall_pixmap)
+        fall_layout.addWidget(fall_label, 0, 0, Qt.AlignCenter)
+
+        fall_detail_label = QLabel(self)
+        fall_detail_label.setText("Detect\nMultiple People")
+        fall_detail_label.setFont(QFont('Arial', 13))
+
+        fall_layout.addWidget(fall_detail_label, 1, 0, Qt.AlignCenter)
+
+        explain_hbox.addLayout(fall_layout)
+
+        fall_layout.setRowStretch(0, 7)
+        fall_layout.setRowStretch(1, 3)
+        
+        warn_layout= QGridLayout()
+
+        warn_detail_label = QLabel(self)
+        warn_detail_label.setText("Detect\nUsing video or camera")
+        warn_detail_label.setFont(QFont('Arial', 13))
+        warn_layout.addWidget(warn_detail_label, 0, 0, Qt.AlignCenter)
+
+        warn_pixmap = QPixmap("icons/dslr-camera.png")
+        warn_pixmap = warn_pixmap.scaled(150, 150, Qt.AspectRatioMode.KeepAspectRatio)
+        warn_label = QLabel()
+        warn_label.setPixmap(warn_pixmap)
+        warn_layout.addWidget(warn_label, 1, 0, Qt.AlignCenter)
+
+        explain_hbox.addLayout(warn_layout)
+
+        warn_layout.setRowStretch(0, 3)
+        warn_layout.setRowStretch(1, 7)
+
+        hbox_frame.setLayout(explain_hbox)
+        vbox.addWidget(hbox_frame)
 
         detail = QLabel(self)
         detail.setText("이 서비스는 작업자의 낙상 감지를 위해 제작되었습니다. 동영상 파일 또는 폴더를 선택하거나 웹캠을 이용하여 낙상을 감지할 수 있습니다.")
-        detail.setContentsMargins(20, 0, 20, 20)
+        detail.setFont(QFont('Arial', 13, QFont.Bold))
+        detail.setFixedHeight(30)
+        detail.setContentsMargins(20, 0, 20, 0)
         vbox.addWidget(detail)
 
+        detail2 = QLabel(self)
+        detail2.setText("지도 : 강우현, 기술지원 : 사민철, 제작 : 안효진, 이원호, 박준철, 박종석, 권대현")
+        detail2.setFont(QFont('Arial', 12))
+        detail2.setContentsMargins(20, 0, 20, 0)
+        detail2.setFixedHeight(30)
+        vbox.addWidget(detail2)
+
+        hbox_buttons = QHBoxLayout()
+        hbox_buttons.addStretch(1)
+
         button = QPushButton("Start", self)
-        button.setStyleSheet("background-color: gray; color: white; border: none; border-radius: 5px;")
+        button.setStyleSheet("background-color: #2596FF; color: white; border: none; border-radius: 5px;")
         button.setFont(QFont('Arial', 16))
-        button.setFixedWidth(100)
+        button.setContentsMargins(0, 30, 0, 30)
+        button.setFixedWidth(150)
         button.setFixedHeight(40)
         button.clicked.connect(self.go_to_second_page)
+        hbox_buttons.addWidget(button)
 
-        hbox = QHBoxLayout()
-        hbox.addStretch(1)
-        hbox.addWidget(button)
-        hbox.addStretch(1)
-        vbox.addLayout(hbox)
-
-        hbox_images = QHBoxLayout()
-
-        pixmap = QPixmap("icons/fall_icon.png")
-        pixmap = pixmap.scaled(170, 170, Qt.AspectRatioMode.KeepAspectRatio)
-        label_img = QLabel()
-        label_img.setPixmap(pixmap)
-        label_img.setAlignment(Qt.AlignHCenter)
-        hbox_images.addWidget(label_img)
-
-        pixmap2 = QPixmap("icons/dslr-camera.png")
-        pixmap2 = pixmap2.scaled(170, 170, Qt.AspectRatioMode.KeepAspectRatio)
-        label_img2 = QLabel()
-        label_img2.setPixmap(pixmap2)
-        label_img2.setAlignment(Qt.AlignHCenter)
-        hbox_images.addWidget(label_img2)
-
-        vbox.addLayout(hbox_images)
-
-        hbox_images2 = QHBoxLayout()
-
-        pixmap3 = QPixmap("icons/warning.png")
-        pixmap3 = pixmap3.scaled(170, 170, Qt.AspectRatioMode.KeepAspectRatio)
-        label_img3 = QLabel()
-        label_img3.setPixmap(pixmap3)
-        label_img3.setAlignment(Qt.AlignHCenter)
-        hbox_images2.addWidget(label_img3)
-
-        pixmap4 = QPixmap("icons/group.png")
-        pixmap4 = pixmap4.scaled(170, 170, Qt.AspectRatioMode.KeepAspectRatio)
-        label_img4 = QLabel()
-        label_img4.setPixmap(pixmap4)
-        label_img4.setAlignment(Qt.AlignHCenter)
-        hbox_images2.addWidget(label_img4)
-
-        vbox.addLayout(hbox_images2)
+        vbox.addLayout(hbox_buttons)
 
         self.setLayout(vbox)
 
@@ -496,7 +641,7 @@ class MyApp(QWidget):
 
     def go_to_second_page(self):
         self.hide()
-        self.second = SecondPage()
+        self.second = SecondPage(self)
 
 def main():
     app = QApplication(sys.argv)

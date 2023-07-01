@@ -10,6 +10,7 @@ from utils.general import non_max_suppression_kpt
 from utils.plots import output_to_keypoint
 from PyQt5.QtWidgets import QMessageBox
 import sys
+from Timestamp import Timestamp
 
 RED_COLOR = (0, 0, 255)
 FONT = cv2.FONT_HERSHEY_SIMPLEX
@@ -88,9 +89,11 @@ def get_pose_model():
 
 
 def get_pose(image, model, device):
+    t = Timestamp()
     image = letterbox(image, 960, stride=128, auto=True)[0]
     image = transforms.ToTensor()(image)
     image = image.unsqueeze(0)
+    t.check("prepare")
 
     if torch.cuda.is_available():
         image = image.half().to(device)
@@ -98,9 +101,10 @@ def get_pose(image, model, device):
     with torch.no_grad():
         output, _ = model(image)
 
+    t.check("nonmax start")
     output = non_max_suppression_kpt(output, 0.25, 0.65, nc=model.yaml['nc'], nkpt=model.yaml['nkpt'],
                                     kpt_label=True)
-    
+    t.check("nonmax end")
     with torch.no_grad():
         output = output_to_keypoint(output)
     return image, output
@@ -131,9 +135,9 @@ def process_frame(frame, model, device):
         draw_falling_alarm(_image, bbox)
     return _image
 
-def process_video2():
+def process_video2(camera_num):
     # 전체 프로세스 함수
-    vid_cap = cv2.VideoCapture(0,cv2.CAP_DSHOW) 
+    vid_cap = cv2.VideoCapture(camera_num,cv2.CAP_DSHOW) 
 
     if not vid_cap.isOpened():
         show_error_message('Error while trying to read video. Please check path again')
@@ -162,7 +166,7 @@ def process_video2():
                 draw_falling_alarm(_image, bbox)
             cv2.imshow('Video',_image)
             # vid_out.write(_image)
-            if cv2.waitKey(1)==ord('q') or cv2.getWindowProperty('Video', cv2.WND_PROP_VISIBLE) <1:
+            if cv2.waitKey(1)==ord('q') or cv2.getWindowProperty('Video', cv2.WND_PROP_VISIBLE) <1 or cv2.waitKey(1)==27:
                 break
             if not success: sys.exit('프레임 획득에 실패하여 나갑니다')
     # vid_out.release()
