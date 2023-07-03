@@ -8,7 +8,7 @@ AI 딥러닝 기반 실시간 낙상 감지 시스템
 > 제작 - 안효진, 이원호, 박준철, 박종석, 권대현
 
 ### Result
-<img src="https://github.com/TEAM-DSS/Human-Fall-Detection/assets/77222481/ebd1c7d1-7322-44be-9785-3b580da267ea" width="45%" />
+<img src="https://github.com/TEAM-DSS/Human-Fall-Detection/assets/77222481/e8f8f83d-de63-4db4-9c1f-6bbd1d01d17d" width="45%" />
 <img src="https://github.com/TEAM-DSS/Human-Fall-Detection/assets/77222481/56b61a92-38a4-4045-93db-432affa8841e" width="45%" />
 
 ---  
